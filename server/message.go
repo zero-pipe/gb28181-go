@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"github.com/emiago/sipgo/sip"
@@ -57,7 +56,7 @@ func (s *Server) handleMessage(req *sip.Request, tx sip.ServerTransaction) {
 				s.handlers.Telemetry.OnKeepalive(deviceID, time.Now())
 			}
 		case "Catalog":
-			log.Printf("[gb28181-go] catalog notify: device=%s items=%d", deviceID, len(msg.Items))
+			s.logf("[gb28181-go] catalog notify: device=%s items=%d", deviceID, len(msg.Items))
 			_ = s.handlers.Message.OnCatalog(ctx, deviceID, msg.Items)
 		case "Alarm":
 			_ = s.handlers.Message.OnAlarm(ctx, deviceID, msg.DeviceID, msg.Alarm)
@@ -68,13 +67,13 @@ func (s *Server) handleMessage(req *sip.Request, tx sip.ServerTransaction) {
 			if st == nil {
 				st = &manscdp.MediaStatusNotify{NotifyType: msg.NotifyType, DeviceID: msg.DeviceID}
 			}
-			log.Printf("[gb28181-go] MediaStatus: device=%s notifyType=%s", deviceID, st.NotifyType)
+			s.logf("[gb28181-go] MediaStatus: device=%s notifyType=%s", deviceID, st.NotifyType)
 			_ = s.handlers.Message.OnMediaStatus(ctx, deviceID, st)
 		}
 	case "Response":
 		switch msg.CmdType {
 		case "Catalog":
-			log.Printf("[gb28181-go] catalog response: device=%s items=%d", deviceID, len(msg.Items))
+			s.logf("[gb28181-go] catalog response: device=%s items=%d", deviceID, len(msg.Items))
 			_ = s.handlers.Message.OnCatalog(ctx, deviceID, msg.Items)
 		case "DeviceInfo":
 			devName := manscdp.ExtractTag(body, "DeviceName")
@@ -84,7 +83,7 @@ func (s *Server) handleMessage(req *sip.Request, tx sip.ServerTransaction) {
 			mfr := manscdp.ExtractTag(body, "Manufacturer")
 			model := manscdp.ExtractTag(body, "Model")
 			fw := manscdp.ExtractTag(body, "Firmware")
-			log.Printf("[gb28181-go] DeviceInfo: device=%s name=%s manufacturer=%s model=%s",
+			s.logf("[gb28181-go] DeviceInfo: device=%s name=%s manufacturer=%s model=%s",
 				deviceID, devName, mfr, model)
 			_ = s.handlers.Message.OnDeviceInfo(ctx, deviceID, devName, mfr, model, fw)
 		case "DeviceStatus":

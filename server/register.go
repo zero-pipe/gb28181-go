@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -41,7 +40,7 @@ func (s *Server) handleRegister(req *sip.Request, tx sip.ServerTransaction) {
 		}
 	}
 	if !known && s.cfg.RequirePreRegister {
-		log.Printf("[gb28181-go] register rejected (not pre-registered): id=%s ip=%s:%d", deviceID, ip, port)
+		s.logf("[gb28181-go] register rejected (not pre-registered): id=%s ip=%s:%d", deviceID, ip, port)
 		s.respond(tx, req, 403, "Forbidden")
 		return
 	}
@@ -68,7 +67,7 @@ func (s *Server) handleRegister(req *sip.Request, tx sip.ServerTransaction) {
 		uri = req.Recipient.String()
 	}
 	if !digest.Verify(auth.Value(), "REGISTER", uri, deviceID, password, ch.Realm, ch.Nonce) {
-		log.Printf("[gb28181-go] register auth failed: id=%s ip=%s:%d", deviceID, ip, port)
+		s.logf("[gb28181-go] register auth failed: id=%s ip=%s:%d", deviceID, ip, port)
 		s.respond(tx, req, 403, "Forbidden")
 		return
 	}
@@ -92,7 +91,7 @@ func (s *Server) handleRegister(req *sip.Request, tx sip.ServerTransaction) {
 
 	if s.handlers.Register != nil {
 		if err := s.handlers.Register.OnRegister(context.Background(), ev); err != nil {
-			log.Printf("[gb28181-go] OnRegister %s: %v", deviceID, err)
+			s.logf("[gb28181-go] OnRegister %s: %v", deviceID, err)
 			s.respond(tx, req, 500, "Server Error")
 			return
 		}
@@ -105,7 +104,7 @@ func (s *Server) handleRegister(req *sip.Request, tx sip.ServerTransaction) {
 	res.AppendHeader(sip.NewHeader("Date", time.Now().UTC().Format("Mon, 02 Jan 2006 15:04:05 GMT")))
 	res.AppendHeader(sip.NewHeader("Expires", strconv.Itoa(expires)))
 	_ = tx.Respond(res)
-	log.Printf("[gb28181-go] registered: id=%s ip=%s:%d transport=%s expires=%d",
+	s.logf("[gb28181-go] registered: id=%s ip=%s:%d transport=%s expires=%d",
 		deviceID, ip, port, ev.Transport, expires)
 }
 

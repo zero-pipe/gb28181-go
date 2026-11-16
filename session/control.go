@@ -48,15 +48,14 @@ func (m *ControlWaiter) Handle(sn, deviceID, result string) {
 	}
 }
 
-func (m *ControlWaiter) Wait(sn string, timeout time.Duration) (*ControlResult, error) {
-	v, ok := m.pending.Load(sn)
-	if !ok {
-		return nil, ErrControlTimeout
-	}
-	ch := v.(chan *ControlResult)
+// Wait blocks on the channel returned by Register. See RecordWaiter.Wait for
+// why the channel is passed explicitly.
+func (m *ControlWaiter) Wait(sn string, ch <-chan *ControlResult, timeout time.Duration) (*ControlResult, error) {
 	select {
-	case r := <-ch:
-		m.pending.Delete(sn)
+	case r, ok := <-ch:
+		if !ok {
+			return nil, ErrControlTimeout
+		}
 		return r, nil
 	case <-time.After(timeout):
 		m.Cancel(sn)

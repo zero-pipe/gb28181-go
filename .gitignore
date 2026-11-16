@@ -1,0 +1,24 @@
+# Build outputs
+/bin/
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Coverage
+coverage.out
+coverage.html
+
+# Runtime / editor / OS
+*.log
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local test captures / reports (not part of the library)
+/testdata/captures/
+/test-reports/
+/tmp/

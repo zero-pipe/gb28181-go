@@ -67,15 +67,14 @@ func (m *PresetWaiter) Handle(sn string, sumNum int, items []manscdp.Preset) {
 	}
 }
 
-func (m *PresetWaiter) Wait(sn string, timeout time.Duration) ([]manscdp.Preset, error) {
-	v, ok := m.pending.Load(sn)
-	if !ok {
-		return nil, ErrPresetTimeout
-	}
-	w := v.(*presetWaiter)
+// Wait blocks on the channel returned by Register. See RecordWaiter.Wait for
+// why the channel is passed explicitly.
+func (m *PresetWaiter) Wait(sn string, ch <-chan []manscdp.Preset, timeout time.Duration) ([]manscdp.Preset, error) {
 	select {
-	case info := <-w.ch:
-		m.pending.Delete(sn)
+	case info, ok := <-ch:
+		if !ok {
+			return nil, ErrPresetTimeout
+		}
 		if info == nil {
 			return []manscdp.Preset{}, nil
 		}

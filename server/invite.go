@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -29,13 +28,13 @@ func (s *Server) SendInvitePlay(
 	if strings.EqualFold(streamMode, "TCP-ACTIVE") && tcpConnect != nil && dialog.InviteResponse != nil {
 		host, port, parseErr := sdp.ParseAnswerMedia(string(dialog.InviteResponse.Body()))
 		if parseErr != nil {
-			log.Printf("[gb28181-go] TCP-ACTIVE parse 200 OK SDP failed: %v", parseErr)
+			s.logf("[gb28181-go] TCP-ACTIVE parse 200 OK SDP failed: %v", parseErr)
 			dialog.Close()
 			return parseErr
 		}
-		log.Printf("[gb28181-go] TCP-ACTIVE connect -> %s:%d", host, port)
+		s.logf("[gb28181-go] TCP-ACTIVE connect -> %s:%d", host, port)
 		if err := tcpConnect(host, port); err != nil {
-			log.Printf("[gb28181-go] TCP-ACTIVE connect failed: %v", err)
+			s.logf("[gb28181-go] TCP-ACTIVE connect failed: %v", err)
 			dialog.Close()
 			return err
 		}
@@ -46,7 +45,7 @@ func (s *Server) SendInvitePlay(
 		Stream: stream, App: "live", Type: session.SessionPlay,
 		Dialog: dialog, StartedAt: time.Now(),
 	})
-	log.Printf("[gb28181-go] invite session stored stream=%s", stream)
+	s.logf("[gb28181-go] invite session stored stream=%s", stream)
 	if onOK != nil && dialog.InviteResponse != nil {
 		onOK(dialog.InviteResponse)
 	}
@@ -123,7 +122,7 @@ func (s *Server) inviteDialog(peer Peer, channelID, sdpBody, ssrc string) (*sipg
 	}
 	recipient := sip.Uri{User: channelID, Host: peer.IP, Port: peer.Port}
 	subject := fmt.Sprintf("%s:%s,%s:0", channelID, ssrc, s.cfg.ID)
-	log.Printf("[gb28181-go] INVITE %s@%s:%d Subject=%s localIP=%s sdpPort=%d",
+	s.logf("[gb28181-go] INVITE %s@%s:%d Subject=%s localIP=%s sdpPort=%d",
 		channelID, peer.IP, peer.Port, subject, localIP, sdp.ExtractVideoPort(sdpBody))
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -133,20 +132,20 @@ func (s *Server) inviteDialog(peer Peer, channelID, sdpBody, ssrc string) (*sipg
 		sip.NewHeader("Subject", subject),
 	)
 	if err != nil {
-		log.Printf("[gb28181-go] INVITE send error: %v", err)
+		s.logf("[gb28181-go] INVITE send error: %v", err)
 		return nil, err
 	}
 	if err := sess.WaitAnswer(ctx, sipgo.AnswerOptions{}); err != nil {
-		log.Printf("[gb28181-go] INVITE no 200 OK: %v", err)
+		s.logf("[gb28181-go] INVITE no 200 OK: %v", err)
 		sess.Close()
 		return nil, err
 	}
-	log.Printf("[gb28181-go] INVITE 200 OK status=%d source=%s", sess.InviteResponse.StatusCode, sess.InviteResponse.Source())
+	s.logf("[gb28181-go] INVITE 200 OK status=%d source=%s", sess.InviteResponse.StatusCode, sess.InviteResponse.Source())
 	if err := sess.Ack(ctx); err != nil {
-		log.Printf("[gb28181-go] ACK error: %v", err)
+		s.logf("[gb28181-go] ACK error: %v", err)
 		sess.Close()
 		return nil, err
 	}
-	log.Printf("[gb28181-go] ACK sent -> %s (RewriteContact)", sess.InviteResponse.Source())
+	s.logf("[gb28181-go] ACK sent -> %s (RewriteContact)", sess.InviteResponse.Source())
 	return sess, nil
 }

@@ -43,15 +43,14 @@ func (m *StatusWaiter) Handle(sn string, st *manscdp.DeviceStatus) {
 	}
 }
 
-func (m *StatusWaiter) Wait(sn string, timeout time.Duration) (*manscdp.DeviceStatus, error) {
-	v, ok := m.pending.Load(sn)
-	if !ok {
-		return nil, ErrStatusTimeout
-	}
-	ch := v.(chan *manscdp.DeviceStatus)
+// Wait blocks on the channel returned by Register. See RecordWaiter.Wait for
+// why the channel is passed explicitly.
+func (m *StatusWaiter) Wait(sn string, ch <-chan *manscdp.DeviceStatus, timeout time.Duration) (*manscdp.DeviceStatus, error) {
 	select {
-	case st := <-ch:
-		m.pending.Delete(sn)
+	case st, ok := <-ch:
+		if !ok {
+			return nil, ErrStatusTimeout
+		}
 		return st, nil
 	case <-time.After(timeout):
 		m.Cancel(sn)

@@ -13,13 +13,13 @@ import (
 
 // Upstream describes a superior GB28181 platform.
 type Upstream struct {
-	ServerGBID  string
-	ServerIP    string
-	ServerPort  int
-	DeviceGBID  string // local platform identity toward upstream
-	Username    string // Digest username; defaults to DeviceGBID
-	Password    string // Digest password for upstream REGISTER
-	Expires     string
+	ServerGBID string
+	ServerIP   string
+	ServerPort int
+	DeviceGBID string // local platform identity toward upstream
+	Username   string // Digest username; defaults to DeviceGBID
+	Password   string // Digest password for upstream REGISTER
+	Expires    string
 }
 
 // Config is local SIP identity used in From headers.

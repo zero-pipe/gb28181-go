@@ -79,13 +79,13 @@ type Handlers struct {
 
 // RegisterEvent carries REGISTER-derived fields for the host to persist.
 type RegisterEvent struct {
-	DeviceID       string
-	IP             string
-	Port           int
-	Transport      string
-	Expires        int
-	CallID         string
-	LocalIP        string
-	ServerID       string
-	IsNewDevice    bool // known=false before register (auto-create candidate)
+	DeviceID    string
+	IP          string
+	Port        int
+	Transport   string
+	Expires     int
+	CallID      string
+	LocalIP     string
+	ServerID    string
+	IsNewDevice bool // known=false before register (auto-create candidate)
 }

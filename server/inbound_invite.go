@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"log"
 
 	"github.com/emiago/sipgo/sip"
 )
@@ -41,13 +40,13 @@ func (s *Server) handleInvite(req *sip.Request, tx sip.ServerTransaction) {
 		SourcePort:   srcPort,
 	})
 	if err != nil {
-		log.Printf("[gb28181-go] inbound INVITE failed upstream=%s channel=%s err=%v", upstreamGBID, channelGBID, err)
+		s.logf("[gb28181-go] inbound INVITE failed upstream=%s channel=%s err=%v", upstreamGBID, channelGBID, err)
 		s.respond(tx, req, 404, "Not Found")
 		return
 	}
 	res := sip.NewResponseFromRequest(req, 200, "OK", answer)
 	res.AppendHeader(sip.NewHeader("Content-Type", "APPLICATION/SDP"))
 	if err := tx.Respond(res); err != nil {
-		log.Printf("[gb28181-go] inbound INVITE respond err=%v", err)
+		s.logf("[gb28181-go] inbound INVITE respond err=%v", err)
 	}
 }

@@ -26,9 +26,9 @@ type Server struct {
 	sn         atomic.Int64
 	infoCSeq   atomic.Int64
 
-	records *session.RecordWaiter
-	presets *session.PresetWaiter
-	invites *session.InviteManager
+	records  *session.RecordWaiter
+	presets  *session.PresetWaiter
+	invites  *session.InviteManager
 	controls *session.ControlWaiter
 	status   *session.StatusWaiter
 }
@@ -86,13 +86,22 @@ func New(cfg Config, handlers Handlers) (*Server, error) {
 	}
 	s.registerHandlers()
 	if cfg.Port <= 0 || strings.TrimSpace(cfg.ID) == "" {
-		log.Printf("[gb28181-go] SIP not fully configured (id/port)")
+		s.logf("[gb28181-go] SIP not fully configured (id/port)")
 	} else if localIP == "" {
-		log.Printf("[gb28181-go] WARNING: IP empty and auto-detect failed; INVITE may time out")
+		s.logf("[gb28181-go] WARNING: IP empty and auto-detect failed; INVITE may time out")
 	} else {
-		log.Printf("[gb28181-go] localIP=%s (Contact/Via)", localIP)
+		s.logf("[gb28181-go] localIP=%s (Contact/Via)", localIP)
 	}
 	return s, nil
+}
+
+// logf writes library diagnostics through the configured Logger.
+func (s *Server) logf(format string, args ...any) {
+	logger := s.cfg.Logger
+	if logger == nil {
+		logger = log.Default()
+	}
+	logger.Printf(format, args...)
 }
 
 func (s *Server) SetHandlers(h Handlers) { s.handlers = h }
@@ -104,7 +113,7 @@ func (s *Server) SetLocalIP(ip string) {
 	}
 	if s.localIP == "" {
 		s.localIP = ip
-		log.Printf("[gb28181-go] localIP set: %s", ip)
+		s.logf("[gb28181-go] localIP set: %s", ip)
 	}
 }
 
@@ -116,13 +125,13 @@ func (s *Server) ApplyConfig(cfg Config) {
 	if ip != "" && ip != "0.0.0.0" && ip != "127.0.0.1" {
 		s.localIP = ip
 	}
-	log.Printf("[gb28181-go] config applied id=%s domain=%s ip=%s port=%d",
+	s.logf("[gb28181-go] config applied id=%s domain=%s ip=%s port=%d",
 		cfg.ID, cfg.Domain, s.localIP, cfg.Port)
 }
 
-func (s *Server) Config() Config   { return s.cfg }
-func (s *Server) LocalIP() string  { return s.localIP }
-func (s *Server) Domain() string   { return s.cfg.Domain }
+func (s *Server) Config() Config                   { return s.cfg }
+func (s *Server) LocalIP() string                  { return s.localIP }
+func (s *Server) Domain() string                   { return s.cfg.Domain }
 func (s *Server) Records() *session.RecordWaiter   { return s.records }
 func (s *Server) Presets() *session.PresetWaiter   { return s.presets }
 func (s *Server) Invites() *session.InviteManager  { return s.invites }
@@ -148,21 +157,21 @@ func (s *Server) registerHandlers() {
 // Start listens on UDP+TCP for cfg.Port. No-op if port <= 0.
 func (s *Server) Start(ctx context.Context) error {
 	if s.cfg.Port <= 0 {
-		log.Printf("[gb28181-go] SIP not listening: port unset")
+		s.logf("[gb28181-go] SIP not listening: port unset")
 		return nil
 	}
 	addr := fmt.Sprintf("0.0.0.0:%d", s.cfg.Port)
 	go func() {
 		if err := s.srv.ListenAndServe(ctx, "udp", addr); err != nil && ctx.Err() == nil {
-			log.Printf("[gb28181-go] sip udp error: %v", err)
+			s.logf("[gb28181-go] sip udp error: %v", err)
 		}
 	}()
 	go func() {
 		if err := s.srv.ListenAndServe(ctx, "tcp", addr); err != nil && ctx.Err() == nil {
-			log.Printf("[gb28181-go] sip tcp error: %v", err)
+			s.logf("[gb28181-go] sip tcp error: %v", err)
 		}
 	}()
-	log.Printf("[gb28181-go] listening on %s (TCP+UDP)", addr)
+	s.logf("[gb28181-go] listening on %s (TCP+UDP)", addr)
 	return nil
 }
 
@@ -172,7 +181,7 @@ func (s *Server) handleBye(req *sip.Request, tx sip.ServerTransaction) {
 		callID = h.Value()
 	}
 	removed := s.invites.RemoveByCallID(callID)
-	log.Printf("[gb28181-go] BYE from=%s source=%s callID=%s removedSessions=%v",
+	s.logf("[gb28181-go] BYE from=%s source=%s callID=%s removedSessions=%v",
 		extractSIPUser(req), req.Source(), callID, removed)
 	if s.handlers.CascadeInbound != nil && callID != "" {
 		_ = s.handlers.CascadeInbound.OnInviteEnd(context.Background(), callID)

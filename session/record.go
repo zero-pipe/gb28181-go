@@ -48,23 +48,18 @@ func (m *RecordWaiter) Cancel(sn string) {
 	}
 }
 
-func (m *RecordWaiter) Wait(sn string, timeout time.Duration) (*RecordInfo, error) {
-	v, ok := m.pending.Load(sn)
-	if !ok {
-		ch := m.Register(sn)
-		select {
-		case info := <-ch:
-			m.pending.Delete(sn)
-			return info, nil
-		case <-time.After(timeout):
-			m.Cancel(sn)
+// Wait blocks on the channel returned by Register. Passing the channel (instead
+// of only SN) avoids missing a response that already arrived: Handle may delete
+// the pending entry before Wait runs, so the buffered channel is the source of truth.
+func (m *RecordWaiter) Wait(sn string, ch <-chan *RecordInfo, timeout time.Duration) (*RecordInfo, error) {
+	select {
+	case info, ok := <-ch:
+		if !ok {
 			return nil, ErrRecordTimeout
 		}
-	}
-	w := v.(*recordWaiter)
-	select {
-	case info := <-w.ch:
-		m.pending.Delete(sn)
+		if info == nil {
+			return &RecordInfo{}, nil
+		}
 		return info, nil
 	case <-time.After(timeout):
 		m.Cancel(sn)
