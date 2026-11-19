@@ -83,6 +83,8 @@ func (s *Server) handleMessage(req *sip.Request, tx sip.ServerTransaction) {
 			_ = s.handlers.Message.OnMobilePosition(ctx, deviceID, msg.DeviceID, msg.Position)
 		case "PTZPosition":
 			_ = s.handlers.Message.OnPTZPosition(ctx, deviceID, msg.DeviceID, msg.PTZPosition)
+		case "UploadSnapShotFinished":
+			_ = s.handlers.Message.OnSnapShotFinished(ctx, deviceID, msg.SnapShot)
 		case "MediaStatus":
 			st := msg.MediaStatus
 			if st == nil {

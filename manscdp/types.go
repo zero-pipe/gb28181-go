@@ -26,6 +26,21 @@ type Message struct {
 	CruiseTrack     *CruiseTrack
 	PTZPosition     *PTZPosition
 	SDCardStatus    *SDCardStatus
+
+	// 图像抓拍（2022 9.14）。
+	SnapShot *SnapShotFinished
+}
+
+// SnapShotFinished is an UploadSnapShotFinished notify (A.2.5.7).
+type SnapShotFinished struct {
+	SessionID string
+	Images    []SnapShotImage
+}
+
+// SnapShotImage is one uploaded image reference.
+type SnapShotImage struct {
+	ImageID  string
+	FilePath string
 }
 
 // BasicParam is a ConfigDownload(BasicParam) response.

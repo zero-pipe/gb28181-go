@@ -139,6 +139,8 @@ func Parse(body []byte) (*Message, error) {
 		msg.PTZCmd = extractTag(body, "PTZCmd")
 	}
 	switch msg.CmdType {
+	case "UploadSnapShotFinished":
+		msg.SnapShot = parseSnapShotFinished(body)
 	case "ConfigDownload":
 		msg.BasicParam = parseBasicParam(body)
 	case "HomePositionQuery":
