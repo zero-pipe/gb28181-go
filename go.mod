@@ -2,7 +2,10 @@ module github.com/zero-pipe/gb28181-go
 
 go 1.24
 
-require github.com/emiago/sipgo v1.4.0
+require (
+	github.com/emiago/sipgo v1.4.0
+	golang.org/x/text v0.28.0
+)
 
 require (
 	github.com/gobwas/httphead v0.1.0 // indirect

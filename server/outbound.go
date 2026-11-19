@@ -15,7 +15,7 @@ func (s *Server) sendMessage(peer Peer, body string) error {
 	}
 	recipient := sip.Uri{User: peer.DeviceID, Host: peer.IP, Port: peer.Port}
 	req := sip.NewRequest(sip.MESSAGE, recipient)
-	req.SetBody([]byte(body))
+	req.SetBody(manscdp.EncodeBody(body))
 	req.AppendHeader(sip.NewHeader("Content-Type", "Application/MANSCDP+xml"))
 	from := &sip.FromHeader{Address: sip.Uri{User: s.cfg.ID, Host: s.cfg.Domain}}
 	to := &sip.FromHeader{Address: recipient}
@@ -156,7 +156,7 @@ func (s *Server) SendSubscribe(peer Peer, eventType, body string, expiresSec int
 	}
 	recipient := sip.Uri{User: peer.DeviceID, Host: peer.IP, Port: peer.Port}
 	req := sip.NewRequest(sip.SUBSCRIBE, recipient)
-	req.SetBody([]byte(body))
+	req.SetBody(manscdp.EncodeBody(body))
 	req.AppendHeader(sip.NewHeader("Content-Type", "Application/MANSCDP+xml"))
 	req.AppendHeader(sip.NewHeader("Event", eventType))
 	req.AppendHeader(sip.NewHeader("Expires", strconv.Itoa(expiresSec)))

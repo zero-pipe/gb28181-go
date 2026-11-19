@@ -104,7 +104,7 @@ func (c *Client) Keepalive(u Upstream) error {
 	body := manscdp.BuildPlatformKeepalive(u.DeviceGBID, strconv.Itoa(c.sn))
 	recipient := sip.Uri{User: u.ServerGBID, Host: u.ServerIP, Port: u.ServerPort}
 	req := sip.NewRequest(sip.MESSAGE, recipient)
-	req.SetBody([]byte(body))
+	req.SetBody(manscdp.EncodeBody(body))
 	req.AppendHeader(sip.NewHeader("Content-Type", "Application/MANSCDP+xml"))
 	from := &sip.FromHeader{Address: sip.Uri{User: u.DeviceGBID, Host: c.cfg.Domain}}
 	to := &sip.FromHeader{Address: recipient}
@@ -118,7 +118,7 @@ func (c *Client) SendCatalogNotify(u Upstream, items []manscdp.CatalogItem) erro
 	body := manscdp.BuildCatalogNotify(u.DeviceGBID, strconv.Itoa(c.sn), items)
 	recipient := sip.Uri{User: u.ServerGBID, Host: u.ServerIP, Port: u.ServerPort}
 	req := sip.NewRequest(sip.MESSAGE, recipient)
-	req.SetBody([]byte(body))
+	req.SetBody(manscdp.EncodeBody(body))
 	req.AppendHeader(sip.NewHeader("Content-Type", "Application/MANSCDP+xml"))
 	from := &sip.FromHeader{Address: sip.Uri{User: u.DeviceGBID, Host: c.cfg.Domain}}
 	to := &sip.FromHeader{Address: recipient}

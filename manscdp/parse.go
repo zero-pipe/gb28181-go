@@ -7,14 +7,31 @@ import (
 	"io"
 	"regexp"
 	"strings"
+
+	"golang.org/x/text/encoding/simplifiedchinese"
 )
+
+// CharsetReader adapts GB28181 XML bodies to UTF-8. Devices commonly declare
+// GB2312/GBK/GB18030 (2016 §6.10 / 2022 requires GB18030) and send those bytes;
+// without conversion non-ASCII names arrive as mojibake. UTF-8 input passes
+// through untouched.
+func CharsetReader(charset string, input io.Reader) (io.Reader, error) {
+	switch strings.ToLower(strings.TrimSpace(charset)) {
+	case "", "utf-8", "utf8":
+		return input, nil
+	case "gb2312", "gbk", "gb18030", "cp936", "x-gbk":
+		return simplifiedchinese.GB18030.NewDecoder().Reader(input), nil
+	default:
+		// Unknown label: assume the payload is already UTF-8 rather than failing.
+		return input, nil
+	}
+}
 
 // Parse parses a MANSCDP XML body into Message.
 func Parse(body []byte) (*Message, error) {
+	body = normalizeToUTF8(body)
 	dec := xml.NewDecoder(bytes.NewReader(body))
-	dec.CharsetReader = func(charset string, input io.Reader) (io.Reader, error) {
-		return input, nil
-	}
+	dec.CharsetReader = CharsetReader
 
 	msg := &Message{Raw: body}
 	var current *CatalogItem
@@ -369,4 +386,40 @@ func normalizeCatalogEvents(items []CatalogItem) {
 			items[i].Event = items[i].OperateType
 		}
 	}
+}
+
+var xmlDeclEncodingRe = regexp.MustCompile(`(?i)(<\?xml[^>]*encoding=")([^"]*)(")`)
+
+// normalizeToUTF8 converts a GB2312/GBK/GB18030 document to UTF-8 and rewrites
+// the XML declaration accordingly, so both the token decoder and the regex
+// fallback extractors see consistent UTF-8 text.
+func normalizeToUTF8(body []byte) []byte {
+	m := xmlDeclEncodingRe.FindSubmatch(body)
+	if len(m) < 3 {
+		return body
+	}
+	switch strings.ToLower(strings.TrimSpace(string(m[2]))) {
+	case "", "utf-8", "utf8":
+		return body
+	case "gb2312", "gbk", "gb18030", "cp936", "x-gbk":
+		out, err := simplifiedchinese.GB18030.NewDecoder().Bytes(body)
+		if err != nil {
+			return body
+		}
+		return []byte(xmlDeclEncodingRe.ReplaceAllString(string(out), "${1}UTF-8${3}"))
+	}
+	return body
+}
+
+// EncodeBody converts an internal UTF-8 MANSCDP document into GB18030 wire
+// bytes, rewriting the XML declaration to match. GB28181 (2016 §6.10, 2022)
+// mandates Chinese mainland character sets on the signalling plane; builders
+// work in UTF-8, so encoding happens once here at send time.
+func EncodeBody(xmlText string) []byte {
+	declared := xmlDeclEncodingRe.ReplaceAllString(xmlText, "${1}GB18030${3}")
+	out, err := simplifiedchinese.GB18030.NewEncoder().Bytes([]byte(declared))
+	if err != nil {
+		return []byte(declared)
+	}
+	return out
 }
