@@ -54,3 +54,24 @@ func TestVerifyWithQopAuth(t *testing.T) {
 		t.Fatal("expected digest with qop=auth to pass")
 	}
 }
+
+func TestVerifyRejectsForgedNonce(t *testing.T) {
+	user := "34020000001320000001"
+	realm := "3402000000"
+	pass := "12345678"
+	method := "REGISTER"
+	uri := "sip:34020000001320000001@3402000000"
+	serverNonce := "server-issued"
+	attackerNonce := "replayed"
+
+	ha1 := md5HexRef(user + ":" + realm + ":" + pass)
+	ha2 := md5HexRef(method + ":" + uri)
+	response := md5HexRef(ha1 + ":" + attackerNonce + ":" + ha2)
+
+	hdr := `Digest username="` + user + `", nonce="` + attackerNonce +
+		`", uri="` + uri + `", response="` + response + `"`
+
+	if Verify(hdr, method, uri, user, pass, realm, serverNonce) {
+		t.Fatal("expected verification to fail when Authorization nonce differs from server-issued nonce")
+	}
+}
