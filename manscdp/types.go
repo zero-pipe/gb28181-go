@@ -153,6 +153,10 @@ type AlarmNotify struct {
 	Longitude        float64
 	Latitude         float64
 	AlarmType        int
+	// 2022 AlarmTypeParam 扩展字段。
+	AlarmTypeParam string
+	EventType      string
+	EventData      string
 }
 
 // MobilePositionNotify is a MobilePosition MANSCDP notify payload.

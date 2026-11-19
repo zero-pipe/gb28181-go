@@ -370,6 +370,9 @@ func parseAlarmNotify(body []byte) *AlarmNotify {
 	fmt.Sscanf(extractTag(body, "Longitude"), "%f", &a.Longitude)
 	fmt.Sscanf(extractTag(body, "Latitude"), "%f", &a.Latitude)
 	fmt.Sscanf(extractTag(body, "AlarmType"), "%d", &a.AlarmType)
+	a.AlarmTypeParam = extractTag(body, "AlarmTypeParam")
+	a.EventType = extractTag(body, "EventType")
+	a.EventData = extractTag(body, "EventData")
 	return a
 }
 
