@@ -107,6 +107,57 @@ func (s *Server) SendAlarmCmd(peer Peer, channelID, alarmCmd string) (string, <-
 	return sn, ch
 }
 
+// QueryConfigDownload sends ConfigDownload and waits for the Response.
+func (s *Server) QueryConfigDownload(peer Peer, configType string) (string, <-chan *manscdp.Message) {
+	sn := s.NextSN()
+	ch := s.queries.Register(sn)
+	_ = s.sendMessage(peer, manscdp.BuildConfigDownloadQuery(peer.DeviceID, sn, configType))
+	return sn, ch
+}
+
+// QueryHomePosition sends HomePositionQuery (2022) and waits for the Response.
+func (s *Server) QueryHomePosition(peer Peer, channelID string) (string, <-chan *manscdp.Message) {
+	sn := s.NextSN()
+	ch := s.queries.Register(sn)
+	_ = s.sendMessage(peer, manscdp.BuildHomePositionQuery(channelID, sn))
+	return sn, ch
+}
+
+// QueryCruiseTrackList sends CruiseTrackListQuery (2022) and waits for the Response.
+func (s *Server) QueryCruiseTrackList(peer Peer, channelID string) (string, <-chan *manscdp.Message) {
+	sn := s.NextSN()
+	ch := s.queries.Register(sn)
+	_ = s.sendMessage(peer, manscdp.BuildCruiseTrackListQuery(channelID, sn))
+	return sn, ch
+}
+
+// QueryCruiseTrack sends CruiseTrackQuery (2022) and waits for the Response.
+func (s *Server) QueryCruiseTrack(peer Peer, channelID string, number int) (string, <-chan *manscdp.Message) {
+	sn := s.NextSN()
+	ch := s.queries.Register(sn)
+	_ = s.sendMessage(peer, manscdp.BuildCruiseTrackQuery(channelID, sn, number))
+	return sn, ch
+}
+
+// QueryPTZPosition sends PTZPosition query (2022) and waits for the Response.
+func (s *Server) QueryPTZPosition(peer Peer, channelID string) (string, <-chan *manscdp.Message) {
+	sn := s.NextSN()
+	ch := s.queries.Register(sn)
+	_ = s.sendMessage(peer, manscdp.BuildPTZPositionQuery(channelID, sn))
+	return sn, ch
+}
+
+// QuerySDCardStatus sends SDCardStatus (2022) and waits for the Response.
+func (s *Server) QuerySDCardStatus(peer Peer, channelID string) (string, <-chan *manscdp.Message) {
+	sn := s.NextSN()
+	ch := s.queries.Register(sn)
+	_ = s.sendMessage(peer, manscdp.BuildSDCardStatusQuery(channelID, sn))
+	return sn, ch
+}
+
+// CancelQuery cancels a pending query waiter.
+func (s *Server) CancelQuery(sn string) { s.queries.Cancel(sn) }
+
 // CancelControl cancels a pending DeviceControl waiter.
 func (s *Server) CancelControl(sn string) { s.controls.Cancel(sn) }
 

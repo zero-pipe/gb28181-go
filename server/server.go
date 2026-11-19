@@ -8,6 +8,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"net"
+
 	"github.com/emiago/sipgo"
 	"github.com/emiago/sipgo/sip"
 	"github.com/zero-pipe/gb28181-go/session"
@@ -31,6 +33,8 @@ type Server struct {
 	invites  *session.InviteManager
 	controls *session.ControlWaiter
 	status   *session.StatusWaiter
+	queries  *session.QueryWaiter
+	tcpPeers *tcpPeerRegistry
 }
 
 // New creates a SIP server. handlers.Auth and handlers.Register/Message should be set
@@ -83,6 +87,7 @@ func New(cfg Config, handlers Handlers) (*Server, error) {
 		invites:  session.NewInviteManager(),
 		controls: session.NewControlWaiter(),
 		status:   session.NewStatusWaiter(),
+		queries:  session.NewQueryWaiter(),
 	}
 	s.registerHandlers()
 	if cfg.Port <= 0 || strings.TrimSpace(cfg.ID) == "" {
@@ -134,6 +139,7 @@ func (s *Server) LocalIP() string                  { return s.localIP }
 func (s *Server) Domain() string                   { return s.cfg.Domain }
 func (s *Server) Records() *session.RecordWaiter   { return s.records }
 func (s *Server) Presets() *session.PresetWaiter   { return s.presets }
+func (s *Server) Queries() *session.QueryWaiter    { return s.queries }
 func (s *Server) Invites() *session.InviteManager  { return s.invites }
 func (s *Server) Controls() *session.ControlWaiter { return s.controls }
 func (s *Server) Status() *session.StatusWaiter    { return s.status }
@@ -179,12 +185,34 @@ func (s *Server) Start(ctx context.Context) error {
 		}
 	}()
 	go func() {
-		if err := s.srv.ListenAndServe(ctx, "tcp", addr); err != nil && ctx.Err() == nil {
+		ln, err := net.Listen("tcp", addr)
+		if err != nil {
+			if ctx.Err() == nil {
+				s.logf("[gb28181-go] sip tcp listen error: %v", err)
+			}
+			return
+		}
+		go func() {
+			<-ctx.Done()
+			_ = ln.Close()
+		}()
+		listener := &trackingListener{Listener: ln, notify: s.onTCPClosed}
+		if err := s.srv.ServeTCP(listener); err != nil && ctx.Err() == nil {
 			s.logf("[gb28181-go] sip tcp error: %v", err)
 		}
 	}()
 	s.logf("[gb28181-go] listening on %s (TCP+UDP)", addr)
 	return nil
+}
+
+// onTCPClosed is the registry callback used by the tracking listener.
+func (s *Server) onTCPClosed(remote string) {
+	if deviceID := s.tcpPeers.closed(remote); deviceID != "" {
+		s.logf("[gb28181-go] tcp closed: device=%s addr=%s", deviceID, remote)
+		if s.handlers.Transport != nil {
+			_ = s.handlers.Transport.OnTransportClosed(context.Background(), deviceID)
+		}
+	}
 }
 
 func (s *Server) handleBye(req *sip.Request, tx sip.ServerTransaction) {

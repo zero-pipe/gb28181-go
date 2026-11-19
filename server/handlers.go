@@ -78,6 +78,11 @@ type RedirectPolicy interface {
 	Redirect(deviceID string) (contact string, expires int, ok bool)
 }
 
+// TransportHandler is notified when a device's TCP registration connection closes.
+type TransportHandler interface {
+	OnTransportClosed(ctx context.Context, deviceID string) error
+}
+
 // Handlers bundles callbacks for the SIP server.
 type Handlers struct {
 	Auth           AuthResolver
@@ -86,6 +91,7 @@ type Handlers struct {
 	Telemetry      TelemetryHook
 	CascadeInbound CascadeInboundHandler
 	Redirect       RedirectPolicy
+	Transport      TransportHandler
 }
 
 // RegisterEvent carries REGISTER-derived fields for the host to persist.

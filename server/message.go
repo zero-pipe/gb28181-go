@@ -97,6 +97,9 @@ func (s *Server) handleMessage(req *sip.Request, tx sip.ServerTransaction) {
 			s.records.Handle(deviceID, msg.DeviceID, msg.SN, msg.SumNum, msg.RecordItems)
 		case "PresetQuery":
 			s.presets.Handle(msg.SN, msg.SumNum, msg.PresetItems)
+		case "ConfigDownload", "HomePositionQuery", "CruiseTrackListQuery",
+			"CruiseTrackQuery", "PTZPosition", "SDCardStatus":
+			s.queries.Handle(msg.SN, msg)
 		case "DeviceControl":
 			result := msg.Result
 			if result == "" {

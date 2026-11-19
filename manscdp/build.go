@@ -270,6 +270,16 @@ func BuildPTZPositionQuery(channelID, sn string) string {
 </Query>`, sn, channelID)
 }
 
+// BuildSDCardStatusQuery builds an SDCardStatus query (2022).
+func BuildSDCardStatusQuery(channelID, sn string) string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="GB2312"?>
+<Query>
+<CmdType>SDCardStatus</CmdType>
+<SN>%s</SN>
+<DeviceID>%s</DeviceID>
+</Query>`, sn, channelID)
+}
+
 // BuildPlatformKeepalive builds an upstream platform keepalive notify.
 func BuildPlatformKeepalive(platformID, sn string) string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="GB2312"?>

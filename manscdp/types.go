@@ -18,6 +18,74 @@ type Message struct {
 	DeviceStatus *DeviceStatus
 	MediaStatus  *MediaStatusNotify
 	PTZCmd       string // DeviceControl PTZCmd (inbound from superior)
+
+	// 2022 / ConfigDownload 查询应答。
+	BasicParam      *BasicParam
+	HomePosition    *HomePosition
+	CruiseTrackList *CruiseTrackList
+	CruiseTrack     *CruiseTrack
+	PTZPosition     *PTZPosition
+	SDCardStatus    *SDCardStatus
+}
+
+// BasicParam is a ConfigDownload(BasicParam) response.
+type BasicParam struct {
+	Result             string
+	Name               string
+	Expiration         string
+	HeartBeatInterval  string
+	HeartBeatCount     string
+	PositionCapability string
+	Longitude          string
+	Latitude           string
+}
+
+// HomePosition is a HomePositionQuery response (2022).
+type HomePosition struct {
+	Result      string
+	Enabled     int
+	ResetTime   int
+	PresetIndex int
+}
+
+// CruisePoint is one stop in a cruise track.
+type CruisePoint struct {
+	PointID  int
+	PresetID int
+	Name     string
+	StayTime int
+	Speed    int
+}
+
+// CruiseTrack is one cruise track.
+type CruiseTrack struct {
+	Number int
+	Name   string
+	Points []CruisePoint
+}
+
+// CruiseTrackList is a CruiseTrackListQuery response.
+type CruiseTrackList struct {
+	Result string
+	Num    int
+	Tracks []CruiseTrack
+}
+
+// PTZPosition is a PTZPosition query/notify payload (2022).
+type PTZPosition struct {
+	Result string
+	Pan    int
+	Tilt   int
+	Zoom   int
+}
+
+// SDCardStatus is an SDCardStatus query response (2022).
+type SDCardStatus struct {
+	Result     string
+	Status     string
+	Type       string
+	CapacityMB int
+	FreeMB     int
 }
 
 // CatalogItem is a device/channel entry in a Catalog response or notify.

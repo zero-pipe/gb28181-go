@@ -138,6 +138,20 @@ func Parse(body []byte) (*Message, error) {
 	if msg.CmdType == "DeviceControl" {
 		msg.PTZCmd = extractTag(body, "PTZCmd")
 	}
+	switch msg.CmdType {
+	case "ConfigDownload":
+		msg.BasicParam = parseBasicParam(body)
+	case "HomePositionQuery":
+		msg.HomePosition = parseHomePosition(body)
+	case "CruiseTrackListQuery":
+		msg.CruiseTrackList = parseCruiseTrackList(body)
+	case "CruiseTrackQuery":
+		msg.CruiseTrack = parseCruiseTrack(body)
+	case "PTZPosition":
+		msg.PTZPosition = parsePTZPosition(body)
+	case "SDCardStatus":
+		msg.SDCardStatus = parseSDCardStatus(body)
+	}
 	if msg.Root == "" {
 		for _, tag := range []string{"Notify", "Response", "Query", "Control"} {
 			if strings.Contains(string(body), "<"+tag+">") {

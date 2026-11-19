@@ -69,6 +69,9 @@ func (s *Server) handleRegister(req *sip.Request, tx sip.ServerTransaction) {
 		ev.LocalIP = lip
 	}
 
+	if ev.Transport == "TCP" {
+		s.tcpPeers.bind(deviceID, req.Source())
+	}
 	if s.handlers.Register != nil {
 		if err := s.handlers.Register.OnRegister(context.Background(), ev); err != nil {
 			s.logf("[gb28181-go] OnRegister %s: %v", deviceID, err)
@@ -187,6 +190,7 @@ func (s *Server) challenge(tx sip.ServerTransaction, req *sip.Request, deviceID 
 }
 
 func (s *Server) handleUnregister(req *sip.Request, tx sip.ServerTransaction, deviceID string) {
+	s.tcpPeers.unbind(deviceID)
 	if s.handlers.Register != nil {
 		_ = s.handlers.Register.OnUnregister(context.Background(), deviceID)
 	}
