@@ -71,6 +71,13 @@ type InboundInviteEvent struct {
 	SourcePort   int
 }
 
+// RedirectPolicy optionally redirects an authenticated REGISTER to another
+// server (2022 §9.1.2.3). Returning ok=false serves the registration locally.
+// contact must be a SIP URI: sip:<server-id>@<ip>:<port>.
+type RedirectPolicy interface {
+	Redirect(deviceID string) (contact string, expires int, ok bool)
+}
+
 // Handlers bundles callbacks for the SIP server.
 type Handlers struct {
 	Auth           AuthResolver
@@ -78,6 +85,7 @@ type Handlers struct {
 	Message        MessageHandler
 	Telemetry      TelemetryHook
 	CascadeInbound CascadeInboundHandler
+	Redirect       RedirectPolicy
 }
 
 // RegisterEvent carries REGISTER-derived fields for the host to persist.

@@ -57,6 +57,8 @@ func (c *Client) buildRegister(u Upstream, expires int) *sip.Request {
 }
 
 // Register sends REGISTER and completes Digest challenge when Password is set.
+// A 302 Moved Temporarily is followed to the Contact target (2022 §9.1.2.3),
+// up to maxRedirects hops.
 func (c *Client) Register(u Upstream) error {
 	expires := 3600
 	if u.Expires != "" {
@@ -64,39 +66,75 @@ func (c *Client) Register(u Upstream) error {
 			expires = v
 		}
 	}
-	req := c.buildRegister(u, expires)
+	const maxRedirects = 3
+	for hop := 0; hop <= maxRedirects; hop++ {
+		res, err := c.registerOnce(&u, expires)
+		if err != nil {
+			return err
+		}
+		switch res.StatusCode {
+		case sip.StatusOK:
+			return nil
+		case sip.StatusMovedTemporarily:
+			target, ok := redirectContact(res)
+			if !ok {
+				return fmt.Errorf("cascade REGISTER 302 without usable Contact")
+			}
+			u.ServerIP, u.ServerPort, u.ServerGBID = target.host, target.port, target.user
+			continue
+		default:
+			return fmt.Errorf("cascade REGISTER status %d", res.StatusCode)
+		}
+	}
+	return fmt.Errorf("cascade REGISTER exceeded %d redirects", maxRedirects)
+}
+
+// registerOnce performs one REGISTER round-trip, handling the Digest challenge.
+func (c *Client) registerOnce(u *Upstream, expires int) (*sip.Response, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	res, err := c.client.Do(ctx, req)
+	res, err := c.client.Do(ctx, c.buildRegister(*u, expires))
 	if err != nil {
-		return err
-	}
-	if res.StatusCode == sip.StatusOK {
-		return nil
+		return nil, err
 	}
 	if res.StatusCode != sip.StatusUnauthorized && res.StatusCode != sip.StatusProxyAuthRequired {
-		return fmt.Errorf("cascade REGISTER status %d", res.StatusCode)
+		return res, nil
 	}
 	user := u.Username
 	if user == "" {
 		user = u.DeviceGBID
 	}
 	if u.Password == "" {
-		return fmt.Errorf("cascade REGISTER challenged (%d) but password empty", res.StatusCode)
+		return nil, fmt.Errorf("cascade REGISTER challenged (%d) but password empty", res.StatusCode)
 	}
-	authReq := c.buildRegister(u, expires)
-	res2, err := c.client.DoDigestAuth(ctx, authReq, res, sipgo.DigestAuth{
+	return c.client.DoDigestAuth(ctx, c.buildRegister(*u, expires), res, sipgo.DigestAuth{
 		Username: user,
 		Password: u.Password,
 	})
-	if err != nil {
-		return err
+}
+
+type redirectTarget struct {
+	user string
+	host string
+	port int
+}
+
+// redirectContact extracts the REGISTER redirect target from a 302 Contact.
+func redirectContact(res *sip.Response) (redirectTarget, bool) {
+	contact := res.Contact()
+	if contact == nil {
+		return redirectTarget{}, false
 	}
-	if res2.StatusCode != sip.StatusOK {
-		return fmt.Errorf("cascade REGISTER auth status %d", res2.StatusCode)
+	addr := contact.Address
+	if addr.Host == "" {
+		return redirectTarget{}, false
 	}
-	return nil
+	port := addr.Port
+	if port <= 0 {
+		port = 5060
+	}
+	return redirectTarget{user: addr.User, host: addr.Host, port: port}, true
 }
 
 func (c *Client) Keepalive(u Upstream) error {

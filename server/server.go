@@ -152,6 +152,18 @@ func (s *Server) registerHandlers() {
 	s.srv.OnNotify(s.handleMessage) // catalog push / subscription notify (抓包 11)
 	s.srv.OnInvite(s.handleInvite)
 	s.srv.OnBye(s.handleBye)
+	s.srv.OnOptions(s.handleOptions)
+}
+
+// allowedMethods is advertised in the Allow header of an OPTIONS response.
+const allowedMethods = "REGISTER, MESSAGE, INVITE, ACK, CANCEL, BYE, OPTIONS, INFO, SUBSCRIBE, NOTIFY"
+
+// handleOptions answers a capability probe (9.2.3 / RFC 3261 §11).
+func (s *Server) handleOptions(req *sip.Request, tx sip.ServerTransaction) {
+	res := sip.NewResponseFromRequest(req, 200, "OK", nil)
+	res.AppendHeader(sip.NewHeader("Allow", allowedMethods))
+	res.AppendHeader(sip.NewHeader("Accept", "application/sdp, application/MANSCDP+xml"))
+	_ = tx.Respond(res)
 }
 
 // Start listens on UDP+TCP for cfg.Port. No-op if port <= 0.

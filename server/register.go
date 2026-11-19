@@ -48,6 +48,10 @@ func (s *Server) handleRegister(req *sip.Request, tx sip.ServerTransaction) {
 		return
 	}
 
+	if s.redirect(req, tx, deviceID, expires) {
+		return
+	}
+
 	ev := RegisterEvent{
 		DeviceID:    deviceID,
 		IP:          ip,
@@ -83,6 +87,27 @@ func (s *Server) handleRegister(req *sip.Request, tx sip.ServerTransaction) {
 	_ = tx.Respond(res)
 	s.logf("[gb28181-go] registered: id=%s ip=%s:%d transport=%s expires=%d",
 		deviceID, ip, port, ev.Transport, expires)
+}
+
+// redirect answers 302 Moved Temporarily when a redirect policy is configured
+// (2022 §9.1.2.3). Returns true if it handled the request.
+func (s *Server) redirect(req *sip.Request, tx sip.ServerTransaction, deviceID string, expires int) bool {
+	if s.handlers.Redirect == nil {
+		return false
+	}
+	contact, targetExpires, ok := s.handlers.Redirect.Redirect(deviceID)
+	if !ok || strings.TrimSpace(contact) == "" {
+		return false
+	}
+	if targetExpires <= 0 {
+		targetExpires = expires
+	}
+	res := sip.NewResponseFromRequest(req, sip.StatusMovedTemporarily, "Moved Temporarily", nil)
+	res.AppendHeader(sip.NewHeader("Contact", contact))
+	res.AppendHeader(sip.NewHeader("Expires", strconv.Itoa(targetExpires)))
+	_ = tx.Respond(res)
+	s.logf("[gb28181-go] register redirected: id=%s -> %s", deviceID, contact)
+	return true
 }
 
 // resolveCredentials loads the device Digest password and whether it is known.
