@@ -25,7 +25,10 @@ type MessageHandler interface {
 	// DeviceKnown reports whether MESSAGE from deviceID should be accepted (else 404).
 	DeviceKnown(deviceID string) bool
 	OnKeepalive(ctx context.Context, deviceID, ip string, port int) error
-	OnCatalog(ctx context.Context, deviceID string, items []manscdp.CatalogItem) error
+	// OnCatalog receives a Catalog list from a device. incremental is true for a
+	// NOTIFY (append/update/delete per item.Event) and false for a full query
+	// response (replace the whole set).
+	OnCatalog(ctx context.Context, deviceID string, items []manscdp.CatalogItem, incremental bool) error
 	OnDeviceInfo(ctx context.Context, deviceID, name, manufacturer, model, firmware string) error
 	OnDeviceStatus(ctx context.Context, deviceID string, status *manscdp.DeviceStatus) error
 	OnMediaStatus(ctx context.Context, deviceID string, status *manscdp.MediaStatusNotify) error

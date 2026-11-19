@@ -55,6 +55,26 @@ func (m *InviteManager) Get(stream string) (*InviteSession, bool) {
 	return v.(*InviteSession), true
 }
 
+// FindByChannel returns the first session whose target channel GB ID matches.
+func (m *InviteManager) FindByChannel(channelID string) (*InviteSession, bool) {
+	if channelID == "" {
+		return nil, false
+	}
+	var found *InviteSession
+	m.sessions.Range(func(_, v any) bool {
+		sess, ok := v.(*InviteSession)
+		if !ok {
+			return true
+		}
+		if sess.ChannelID == channelID {
+			found = sess
+			return false
+		}
+		return true
+	})
+	return found, found != nil
+}
+
 func (m *InviteManager) Remove(stream string) {
 	m.sessions.Delete(stream)
 }

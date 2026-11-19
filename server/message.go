@@ -57,7 +57,7 @@ func (s *Server) handleMessage(req *sip.Request, tx sip.ServerTransaction) {
 			}
 		case "Catalog":
 			s.logf("[gb28181-go] catalog notify: device=%s items=%d", deviceID, len(msg.Items))
-			_ = s.handlers.Message.OnCatalog(ctx, deviceID, msg.Items)
+			_ = s.handlers.Message.OnCatalog(ctx, deviceID, msg.Items, true)
 		case "Alarm":
 			_ = s.handlers.Message.OnAlarm(ctx, deviceID, msg.DeviceID, msg.Alarm)
 		case "MobilePosition":
@@ -74,7 +74,7 @@ func (s *Server) handleMessage(req *sip.Request, tx sip.ServerTransaction) {
 		switch msg.CmdType {
 		case "Catalog":
 			s.logf("[gb28181-go] catalog response: device=%s items=%d", deviceID, len(msg.Items))
-			_ = s.handlers.Message.OnCatalog(ctx, deviceID, msg.Items)
+			_ = s.handlers.Message.OnCatalog(ctx, deviceID, msg.Items, false)
 		case "DeviceInfo":
 			devName := manscdp.ExtractTag(body, "DeviceName")
 			if devName == "" {
