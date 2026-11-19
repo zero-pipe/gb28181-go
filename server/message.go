@@ -40,6 +40,25 @@ func (s *Server) handleMessage(req *sip.Request, tx sip.ServerTransaction) {
 		return
 	}
 
+	// Superior → subordinate: MANSCDP Query (Catalog/DeviceInfo/...) answered by us.
+	if msg.Root == "Query" && s.handlers.CascadeInbound != nil && s.handlers.CascadeInbound.UpstreamKnown(deviceID) {
+		respBody, ok := s.handlers.CascadeInbound.OnQuery(context.Background(), InboundQueryEvent{
+			UpstreamGBID: deviceID,
+			CmdType:      msg.CmdType,
+			SN:           msg.SN,
+			DeviceID:     msg.DeviceID,
+			Raw:          append([]byte(nil), body...),
+		})
+		if !ok || len(respBody) == 0 {
+			s.respond(tx, req, 200, "OK")
+			return
+		}
+		res := sip.NewResponseFromRequest(req, 200, "OK", manscdp.EncodeBody(string(respBody)))
+		res.AppendHeader(sip.NewHeader("Content-Type", "Application/MANSCDP+xml"))
+		_ = tx.Respond(res)
+		return
+	}
+
 	if s.handlers.Message == nil || !s.handlers.Message.DeviceKnown(deviceID) {
 		s.respond(tx, req, 404, "Not Found")
 		return

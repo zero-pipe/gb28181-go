@@ -302,23 +302,110 @@ func BuildCatalogNotify(platformDeviceID, sn string, items []CatalogItem) string
 	buf.WriteString(fmt.Sprintf("<SumNum>%d</SumNum>\r\n", len(items)))
 	buf.WriteString(fmt.Sprintf("<DeviceList Num=\"%d\">\r\n", len(items)))
 	for _, it := range items {
-		buf.WriteString("<Item>\r\n")
-		buf.WriteString(fmt.Sprintf("<DeviceID>%s</DeviceID>\r\n", it.DeviceID))
-		buf.WriteString(fmt.Sprintf("<Name>%s</Name>\r\n", it.Name))
-		if it.Status != "" {
-			buf.WriteString(fmt.Sprintf("<Status>%s</Status>\r\n", it.Status))
-		}
-		ev := it.Event
-		if ev == "" {
-			ev = it.OperateType
-		}
-		if ev != "" {
-			buf.WriteString(fmt.Sprintf("<Event>%s</Event>\r\n", ev))
-		}
-		buf.WriteString("</Item>\r\n")
+		buf.WriteString(renderCatalogItem(it))
 	}
 	buf.WriteString("</DeviceList>\r\n</Notify>\r\n")
 	return buf.String()
+}
+
+// BuildCatalogResponse answers a superior Catalog Query (9.5.3 / A.2.4.1).
+func BuildCatalogResponse(deviceID, sn string, items []CatalogItem) string {
+	var buf strings.Builder
+	buf.WriteString(`<?xml version="1.0" encoding="GB2312"?>` + "\r\n")
+	buf.WriteString("<Response>\r\n")
+	buf.WriteString("<CmdType>Catalog</CmdType>\r\n")
+	buf.WriteString(fmt.Sprintf("<SN>%s</SN>\r\n", sn))
+	buf.WriteString(fmt.Sprintf("<DeviceID>%s</DeviceID>\r\n", deviceID))
+	buf.WriteString(fmt.Sprintf("<SumNum>%d</SumNum>\r\n", len(items)))
+	buf.WriteString(fmt.Sprintf("<DeviceList Num=\"%d\">\r\n", len(items)))
+	for _, it := range items {
+		buf.WriteString(renderCatalogItem(it))
+	}
+	buf.WriteString("</DeviceList>\r\n</Response>\r\n")
+	return buf.String()
+}
+
+// renderCatalogItem renders one <Item> with the fields required by 附录 J.
+func renderCatalogItem(it CatalogItem) string {
+	var buf strings.Builder
+	buf.WriteString("<Item>\r\n")
+	buf.WriteString(fmt.Sprintf("<DeviceID>%s</DeviceID>\r\n", it.DeviceID))
+	buf.WriteString(fmt.Sprintf("<Name>%s</Name>\r\n", it.Name))
+	if it.Manufacturer != "" {
+		buf.WriteString(fmt.Sprintf("<Manufacturer>%s</Manufacturer>\r\n", it.Manufacturer))
+	}
+	if it.Model != "" {
+		buf.WriteString(fmt.Sprintf("<Model>%s</Model>\r\n", it.Model))
+	}
+	if it.Owner != "" {
+		buf.WriteString(fmt.Sprintf("<Owner>%s</Owner>\r\n", it.Owner))
+	}
+	if it.CivilCode != "" {
+		buf.WriteString(fmt.Sprintf("<CivilCode>%s</CivilCode>\r\n", it.CivilCode))
+	}
+	if it.Address != "" {
+		buf.WriteString(fmt.Sprintf("<Address>%s</Address>\r\n", it.Address))
+	}
+	if it.ParentID != "" {
+		buf.WriteString(fmt.Sprintf("<ParentID>%s</ParentID>\r\n", it.ParentID))
+	}
+	if it.Parental != 0 {
+		buf.WriteString(fmt.Sprintf("<Parental>%d</Parental>\r\n", it.Parental))
+	}
+	if it.RegisterWay != 0 {
+		buf.WriteString(fmt.Sprintf("<RegisterWay>%d</RegisterWay>\r\n", it.RegisterWay))
+	}
+	if it.Secrecy != 0 {
+		buf.WriteString(fmt.Sprintf("<Secrecy>%d</Secrecy>\r\n", it.Secrecy))
+	}
+	status := it.Status
+	if status == "" {
+		status = "ON"
+	}
+	buf.WriteString(fmt.Sprintf("<Status>%s</Status>\r\n", status))
+	if it.Longitude != 0 || it.Latitude != 0 {
+		buf.WriteString(fmt.Sprintf("<Longitude>%g</Longitude>\r\n", it.Longitude))
+		buf.WriteString(fmt.Sprintf("<Latitude>%g</Latitude>\r\n", it.Latitude))
+	}
+	ev := it.Event
+	if ev == "" {
+		ev = it.OperateType
+	}
+	if ev != "" {
+		buf.WriteString(fmt.Sprintf("<Event>%s</Event>\r\n", ev))
+	}
+	buf.WriteString("</Item>\r\n")
+	return buf.String()
+}
+
+// BuildDeviceInfoResponse answers a superior DeviceInfo Query.
+func BuildDeviceInfoResponse(deviceID, sn, name, manufacturer, model, firmware string) string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="GB2312"?>
+<Response>
+<CmdType>DeviceInfo</CmdType>
+<SN>%s</SN>
+<DeviceID>%s</DeviceID>
+<Result>OK</Result>
+<DeviceName>%s</DeviceName>
+<Manufacturer>%s</Manufacturer>
+<Model>%s</Model>
+<Firmware>%s</Firmware>
+</Response>`, sn, deviceID, name, manufacturer, model, firmware)
+}
+
+// BuildDeviceStatusResponse answers a superior DeviceStatus Query.
+func BuildDeviceStatusResponse(deviceID, sn string) string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="GB2312"?>
+<Response>
+<CmdType>DeviceStatus</CmdType>
+<SN>%s</SN>
+<DeviceID>%s</DeviceID>
+<Result>OK</Result>
+<Online>ONLINE</Online>
+<Status>OK</Status>
+<Encode>ON</Encode>
+<Record>ON</Record>
+</Response>`, sn, deviceID)
 }
 
 // BuildBroadcastNotify builds an audio broadcast notify.

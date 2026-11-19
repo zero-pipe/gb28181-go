@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
-
-	"net"
 
 	"github.com/emiago/sipgo"
 	"github.com/emiago/sipgo/sip"
@@ -159,6 +159,83 @@ func (s *Server) registerHandlers() {
 	s.srv.OnInvite(s.handleInvite)
 	s.srv.OnBye(s.handleBye)
 	s.srv.OnOptions(s.handleOptions)
+	s.srv.OnSubscribe(s.handleSubscribe)
+	s.srv.OnInfo(s.handleInfo)
+}
+
+// handleInfo forwards superior playback control (MANSRTSP over SIP INFO).
+func (s *Server) handleInfo(req *sip.Request, tx sip.ServerTransaction) {
+	callID := ""
+	if c := req.CallID(); c != nil {
+		callID = c.Value()
+	}
+	ct := ""
+	if h := req.GetHeader("Content-Type"); h != nil {
+		ct = strings.TrimSpace(h.Value())
+	}
+	ev := InboundInfoEvent{
+		UpstreamGBID: extractSIPUser(req),
+		CallID:       callID,
+		ChannelGBID:  req.Recipient.User,
+		ContentType:  ct,
+		Body:         append([]byte(nil), req.Body()...),
+	}
+	if s.handlers.CascadeInbound != nil {
+		if err := s.handlers.CascadeInbound.OnInfo(context.Background(), ev); err != nil {
+			s.logf("[gb28181-go] INFO forward failed: callID=%s err=%v", callID, err)
+		}
+	}
+	s.respond(tx, req, 200, "OK")
+}
+
+// handleSubscribe accepts an upstream platform's SUBSCRIBE (Catalog/Alarm/
+// MobilePosition) when the platform is known, replying with the granted Expires.
+func (s *Server) handleSubscribe(req *sip.Request, tx sip.ServerTransaction) {
+	deviceID := extractSIPUser(req)
+	if deviceID == "" {
+		s.respond(tx, req, 400, "Bad Request")
+		return
+	}
+	event := ""
+	if h := req.GetHeader("Event"); h != nil {
+		event = strings.TrimSpace(h.Value())
+	}
+	expires := 3600
+	if h := req.GetHeader("Expires"); h != nil {
+		if v, err := strconv.Atoi(strings.TrimSpace(h.Value())); err == nil {
+			expires = v
+		}
+	}
+	callID := ""
+	if c := req.CallID(); c != nil {
+		callID = c.Value()
+	}
+	ip, port := extractSourceAddr(req)
+	ev := InboundSubscribeEvent{
+		UpstreamGBID: deviceID, Event: event, Expires: expires,
+		CallID: callID, SourceIP: ip, SourcePort: port,
+	}
+	if s.handlers.CascadeInbound == nil || !s.handlers.CascadeInbound.UpstreamKnown(deviceID) {
+		s.logf("[gb28181-go] subscribe rejected (unknown upstream): %s event=%s", deviceID, event)
+		s.respond(tx, req, 403, "Forbidden")
+		return
+	}
+	granted, accepted, err := s.handlers.CascadeInbound.OnSubscribe(context.Background(), ev)
+	if err != nil || !accepted {
+		s.logf("[gb28181-go] subscribe rejected: upstream=%s event=%s err=%v", deviceID, event, err)
+		s.respond(tx, req, 403, "Forbidden")
+		return
+	}
+	if granted <= 0 {
+		granted = expires
+	}
+	res := sip.NewResponseFromRequest(req, 200, "OK", nil)
+	if event != "" {
+		res.AppendHeader(sip.NewHeader("Event", event))
+	}
+	res.AppendHeader(sip.NewHeader("Expires", strconv.Itoa(granted)))
+	_ = tx.Respond(res)
+	s.logf("[gb28181-go] subscribe accepted: upstream=%s event=%s expires=%d", deviceID, event, granted)
 }
 
 // allowedMethods is advertised in the Allow header of an OPTIONS response.

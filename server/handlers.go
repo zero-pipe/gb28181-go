@@ -49,6 +49,44 @@ type CascadeInboundHandler interface {
 	OnDeviceControl(ctx context.Context, ev InboundControlEvent) error
 	OnInvite(ctx context.Context, ev InboundInviteEvent) (answerSDP []byte, err error)
 	OnInviteEnd(ctx context.Context, callID string) error
+	// OnSubscribe handles an inbound SUBSCRIBE from an upstream platform
+	// (Catalog/Alarm/MobilePosition). Return the granted Expires in seconds;
+	// accepted=false answers 403.
+	OnSubscribe(ctx context.Context, ev InboundSubscribeEvent) (expires int, accepted bool, err error)
+	// OnQuery handles an inbound MANSCDP Query from an upstream platform.
+	// Return ok=false to answer an empty 200.
+	OnQuery(ctx context.Context, ev InboundQueryEvent) (body []byte, ok bool)
+	// OnInfo forwards a superior INFO (MANSRTSP playback control) to the leaf
+	// session associated with the dialog.
+	OnInfo(ctx context.Context, ev InboundInfoEvent) error
+}
+
+// InboundInfoEvent is a superior INFO message (playback control).
+type InboundInfoEvent struct {
+	UpstreamGBID string
+	CallID       string
+	ChannelGBID  string
+	ContentType  string
+	Body         []byte
+}
+
+// InboundSubscribeEvent is a superior SUBSCRIBE.
+type InboundSubscribeEvent struct {
+	UpstreamGBID  string
+	Event         string // Catalog / Alarm / MobilePosition
+	Expires       int
+	CallID        string
+	SourceIP      string
+	SourcePort    int
+}
+
+// InboundQueryEvent is a superior MANSCDP Query (e.g. Catalog).
+type InboundQueryEvent struct {
+	UpstreamGBID string
+	CmdType      string // Catalog / DeviceInfo / DeviceStatus / ...
+	SN           string
+	DeviceID     string
+	Raw          []byte
 }
 
 // InboundControlEvent is a superior MESSAGE DeviceControl.
