@@ -35,6 +35,7 @@ type MessageHandler interface {
 	OnDeviceControlResult(ctx context.Context, deviceID, sn, result string) error
 	OnAlarm(ctx context.Context, deviceID, channelID string, alarm *manscdp.AlarmNotify) error
 	OnMobilePosition(ctx context.Context, deviceID, channelID string, pos *manscdp.MobilePositionNotify) error
+	OnPTZPosition(ctx context.Context, deviceID, channelID string, pos *manscdp.PTZPosition) error
 }
 
 // TelemetryHook is optional side-effect hooks (e.g. Redis timestamps).

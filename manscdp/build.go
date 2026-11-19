@@ -215,6 +215,52 @@ func BuildRecordInfoQueryOpts(channelID, sn string, opts RecordInfoOpts) string 
 	return b.String()
 }
 
+// BuildPTZPreciseCtrl builds a PTZ precise control (A.2.3.1.11).
+// Pan: 0~360 degrees, Tilt: about -30~90, Zoom: multiple.
+func BuildPTZPreciseCtrl(channelID, sn string, pan, tilt, zoom float64) string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="GB2312"?>
+<Control>
+<CmdType>DeviceControl</CmdType>
+<SN>%s</SN>
+<DeviceID>%s</DeviceID>
+<PTZPreciseCtrlType>
+<Pan>%g</Pan>
+<Tilt>%g</Tilt>
+<Zoom>%g</Zoom>
+</PTZPreciseCtrlType>
+</Control>`, sn, channelID, pan, tilt, zoom)
+}
+
+// BuildFormatSDCard builds a storage-card format command (A.2.3.1.13).
+// The element name follows common 2022 implementations; devices ignore unknown
+// children, so a mismatched name degrades to a no-op rather than an error.
+func BuildFormatSDCard(channelID, sn string) string {
+	return fmt.Sprintf(`<?xml version="1.0" encoding="GB2312"?>
+<Control>
+<CmdType>DeviceControl</CmdType>
+<SN>%s</SN>
+<DeviceID>%s</DeviceID>
+<FormatSDCard>1</FormatSDCard>
+</Control>`, sn, channelID)
+}
+
+// BuildTargetTrack builds a target-tracking command (A.2.3.1.14).
+// trackType: Auto / Manual / Stop.
+func BuildTargetTrack(channelID, sn, trackType string) string {
+	if trackType == "" {
+		trackType = "Auto"
+	}
+	return fmt.Sprintf(`<?xml version="1.0" encoding="GB2312"?>
+<Control>
+<CmdType>DeviceControl</CmdType>
+<SN>%s</SN>
+<DeviceID>%s</DeviceID>
+<TargetTrack>
+<TargetTrackType>%s</TargetTrackType>
+</TargetTrack>
+</Control>`, sn, channelID, trackType)
+}
+
 // BuildConfigDownloadQuery builds a ConfigDownload query.
 func BuildConfigDownloadQuery(deviceID, sn, configType string) string {
 	if configType == "" {

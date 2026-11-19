@@ -81,6 +81,8 @@ func (s *Server) handleMessage(req *sip.Request, tx sip.ServerTransaction) {
 			_ = s.handlers.Message.OnAlarm(ctx, deviceID, msg.DeviceID, msg.Alarm)
 		case "MobilePosition":
 			_ = s.handlers.Message.OnMobilePosition(ctx, deviceID, msg.DeviceID, msg.Position)
+		case "PTZPosition":
+			_ = s.handlers.Message.OnPTZPosition(ctx, deviceID, msg.DeviceID, msg.PTZPosition)
 		case "MediaStatus":
 			st := msg.MediaStatus
 			if st == nil {
