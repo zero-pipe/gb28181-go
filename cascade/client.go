@@ -50,7 +50,7 @@ func (c *Client) buildRegister(u Upstream, expires int) *sip.Request {
 	req := sip.NewRequest(sip.REGISTER, recipient)
 	req.AppendHeader(sip.NewHeader("Expires", strconv.Itoa(expires)))
 	from := &sip.FromHeader{Address: sip.Uri{User: u.DeviceGBID, Host: c.cfg.Domain}}
-	to := &sip.FromHeader{Address: recipient}
+	to := &sip.ToHeader{Address: recipient}
 	req.AppendHeader(from)
 	req.AppendHeader(to)
 	return req
@@ -94,7 +94,8 @@ func (c *Client) registerOnce(u *Upstream, expires int) (*sip.Response, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	res, err := c.client.Do(ctx, c.buildRegister(*u, expires))
+	req := c.buildRegister(*u, expires)
+	res, err := c.client.Do(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +109,9 @@ func (c *Client) registerOnce(u *Upstream, expires int) (*sip.Response, error) {
 	if u.Password == "" {
 		return nil, fmt.Errorf("cascade REGISTER challenged (%d) but password empty", res.StatusCode)
 	}
-	return c.client.DoDigestAuth(ctx, c.buildRegister(*u, expires), res, sipgo.DigestAuth{
+	// DoDigestAuth re-sends the same request object; a fresh request would have
+	// no CSeq and panics inside sipgo.
+	return c.client.DoDigestAuth(ctx, req, res, sipgo.DigestAuth{
 		Username: user,
 		Password: u.Password,
 	})
@@ -145,7 +148,7 @@ func (c *Client) Keepalive(u Upstream) error {
 	req.SetBody(manscdp.EncodeBody(body))
 	req.AppendHeader(sip.NewHeader("Content-Type", "Application/MANSCDP+xml"))
 	from := &sip.FromHeader{Address: sip.Uri{User: u.DeviceGBID, Host: c.cfg.Domain}}
-	to := &sip.FromHeader{Address: recipient}
+	to := &sip.ToHeader{Address: recipient}
 	req.AppendHeader(from)
 	req.AppendHeader(to)
 	return c.client.WriteRequest(req)
@@ -159,7 +162,7 @@ func (c *Client) SendCatalogNotify(u Upstream, items []manscdp.CatalogItem) erro
 	req.SetBody(manscdp.EncodeBody(body))
 	req.AppendHeader(sip.NewHeader("Content-Type", "Application/MANSCDP+xml"))
 	from := &sip.FromHeader{Address: sip.Uri{User: u.DeviceGBID, Host: c.cfg.Domain}}
-	to := &sip.FromHeader{Address: recipient}
+	to := &sip.ToHeader{Address: recipient}
 	req.AppendHeader(from)
 	req.AppendHeader(to)
 	return c.client.WriteRequest(req)
@@ -186,8 +189,7 @@ func (c *Client) Unregister(u Upstream) error {
 	if u.Password == "" {
 		return fmt.Errorf("cascade UNREGISTER challenged (%d) but password empty", res.StatusCode)
 	}
-	authReq := c.buildRegister(u, 0)
-	res2, err := c.client.DoDigestAuth(ctx, authReq, res, sipgo.DigestAuth{
+	res2, err := c.client.DoDigestAuth(ctx, req, res, sipgo.DigestAuth{
 		Username: user,
 		Password: u.Password,
 	})
